@@ -896,97 +896,80 @@ async function writeToMaestra(row,code){
 }
 
 async function insertRowInPlace(sid,sn,newRow,escuela,newCode){
-  // Leer solo columnas A y B para encontrar la posición
-  const d=await sGet(sid,sn+'!A:B');
-  const allRows=d.values||[];
+  // Paso 1: leer A:B para encontrar posición (rápido)
+  const ab=await sGet(sid,sn+'!A:B');
+  const abRows=ab.values||[];
 
-  if(allRows.length<=1){
-    // Hoja vacía o solo encabezado — append directo
+  // Fila 0 = encabezado. Las filas de datos empiezan en índice 1.
+  // Trabajamos con números de fila en Sheets (1-based) directamente.
+  // Fila Sheets = índice en abRows + 1 (porque el array es 0-based).
+
+  // Caso: hoja vacía o solo encabezado
+  if(abRows.length<=1){
     await sAppend(sid,sn,[newRow]);
     return;
   }
 
-  const dataRows=allRows.slice(1); // sin encabezado
+  // Encontrar la fila Sheets donde insertar
+  // Queremos insertar DESPUÉS de la última fila de la escuela con código menor
+  // "Insertar en fila X" = la nueva fila quedará en la posición X,
+  // y todo lo que estaba en X y abajo se desplaza una fila hacia abajo.
 
-  // Encontrar la última fila del bloque de esta escuela
-  let lastSchoolRow=-1; // índice en dataRows
-  let foundSchool=false;
-  for(let i=0;i<dataRows.length;i++){
-    const re=(dataRows[i][0]||'').trim();
-    if(re===escuela){foundSchool=true;lastSchoolRow=i;}
-    else if(foundSchool)break; // salimos del bloque
+  let insertSheetRow = abRows.length + 1; // default: al final (después de todos)
+  let foundSchool = false;
+
+  for(let i=1; i<abRows.length; i++){  // i=1 para saltar encabezado
+    const rowEscuela = (abRows[i][0]||'').trim();
+    const rowCode    = (abRows[i][1]||'').trim();
+
+    if(rowEscuela === escuela){
+      foundSchool = true;
+      if(codeN(rowCode) > codeN(newCode)){
+        // Insertar ANTES de esta fila
+        insertSheetRow = i + 1; // fila Sheets es índice+1
+        break;
+      }
+      // Si el código es menor o igual, seguir avanzando
+      insertSheetRow = i + 2; // insertar después de esta fila
+    } else if(foundSchool){
+      // Salimos del bloque de la escuela sin encontrar código mayor
+      // insertSheetRow ya quedó apuntando a la fila después del último de la escuela
+      break;
+    }
   }
 
   if(!foundSchool){
-    // Escuela no existe aún — append al final
+    // Escuela no está en la plantilla aún — append al final
     await sAppend(sid,sn,[newRow]);
     return;
   }
 
-  // Insertar después de lastSchoolRow (que es índice en dataRows)
-  // La fila en Sheets es lastSchoolRow + 2 (1 por encabezado, 1 por 1-index)
-  // Usamos el range de esa fila+1 para que append inserte ANTES de la siguiente fila
-  // Pero la API de append no permite insertar en posición específica.
-  // Usamos batchUpdate appendCells que sí permite rango específico... 
-  // La solución más segura: leer todo, construir en memoria, reescribir solo las filas afectadas.
-
-  const fullD=await sGet(sid,sn+'!A:ZZ');
-  const fullRows=fullD.values||[];
-  const fullData=fullRows.slice(1);
-
-  // Insertar en posición correcta dentro del bloque
-  let insertAt=lastSchoolRow+1; // después del último de la escuela
-  // Refinar: si hay filas con código mayor, insertar antes
-  for(let i=0;i<fullData.length;i++){
-    const re=(fullData[i][0]||'').trim();
-    const rc=(fullData[i][1]||'').trim();
-    if(re===escuela&&codeN(rc)>codeN(newCode)){insertAt=i;break;}
-  }
-
-  fullData.splice(insertAt,0,newRow);
-
-  // Reescribir desde la fila de inserción hasta el final del bloque de esta escuela
-  // Para no tocar otras filas, calculamos cuántas filas del bloque quedan
-  let blockEnd=insertAt;
-  for(let i=insertAt;i<fullData.length;i++){
-    const re=(fullData[i][0]||'').trim();
-    if(re===escuela||i===insertAt)blockEnd=i;
-    else if(i>insertAt)break;
-  }
-
-  const rowsToWrite=fullData.slice(insertAt,blockEnd+1);
-  const startSheetRow=insertAt+2; // +1 encabezado +1 para 1-index
-  const width=Math.max(...rowsToWrite.map(r=>r.length),newRow.length,fullRows[0]?fullRows[0].length:1);
-  const normalized=rowsToWrite.map(r=>{const c=[...r];while(c.length<width)c.push('');return c;});
-  const endCol=col2l(width);
-  const endSheetRow=startSheetRow+normalized.length-1;
-
-  // Primero insertar una fila vacía en Sheets para hacer espacio
-  const metaR=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sid}?fields=sheets.properties`,
-    {headers:{Authorization:'Bearer '+token}});
+  // Paso 2: obtener sheetId
+  const metaR=await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${sid}?fields=sheets.properties`,
+    {headers:{Authorization:'Bearer '+token}}
+  );
   const mj=await metaR.json();
   const sh=(mj.sheets||[]).find(s=>s.properties.title===sn);
-  if(!sh)throw new Error('Hoja no encontrada: '+sn);
+  if(!sh) throw new Error('Hoja no encontrada: '+sn);
   const sheetId=sh.properties.sheetId;
-  const si=insertAt+1; // 0-index para la API (+1 por encabezado)
 
+  // Paso 3: insertDimension
+  // startIndex es 0-based. La fila Sheets insertSheetRow (1-based) corresponde a startIndex = insertSheetRow - 1.
+  const startIndex = insertSheetRow - 1;
   const ir=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sid}:batchUpdate`,{
     method:'POST',
     headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
     body:JSON.stringify({requests:[{insertDimension:{
-      range:{sheetId,dimension:'ROWS',startIndex:si,endIndex:si+1},
+      range:{sheetId,dimension:'ROWS',startIndex,endIndex:startIndex+1},
       inheritFromBefore:false
     }}]})
   });
-  if(!ir.ok){
-    const errText=await ir.text();
-    throw new Error('Insert row '+ir.status+': '+errText);
-  }
+  if(!ir.ok) throw new Error('insertDimension '+ir.status+': '+await ir.text());
 
-  // Escribir solo la fila nueva
-  const cl=col2l(newRow.length);
-  const targetRow=si+1; // 1-indexed para la API de values
-  await sUpdate(sid,`${sn}!A${targetRow}:${cl}${targetRow}`,[newRow]);
+  // Paso 4: escribir la fila en insertSheetRow (que ahora está vacía)
+  const colEnd=col2l(newRow.length);
+  await sUpdate(sid,`${sn}!A${insertSheetRow}:${colEnd}${insertSheetRow}`,[newRow]);
 }
 
 async function sAppend(sid,sn,rows){
