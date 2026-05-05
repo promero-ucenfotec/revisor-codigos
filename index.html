@@ -835,8 +835,9 @@ async function doApprove(){
     lastCodes[esc]=code;
     session.approved++;
     toast('✓ Aprobado: '+code,'ok');
-    setBtns(false,approveLabel);
     nextReview();
+    // Re-habilitar botones solo si aún estamos en la misma pantalla de revisión
+    setBtns(false,approveLabel);
 
   }catch(e){
     toast('Error: '+e.message,'err');
@@ -1002,7 +1003,11 @@ async function sAppend(sid,sn,rows){
 }
 
 async function markDone(rowIdx){
-  await sUpdate(xSid(cfg.responsesUrl),`${cfg.responsesSheet||'Creacion_Codigo'}!A${rowIdx}`,[['TRUE']]);
+  const DONE_FIELD='Incluido en Plantilla Maestra';
+  const ci=formsHdrs.indexOf(DONE_FIELD);
+  const col=ci>=0?col2l(ci+1):'A';
+  if(ci<0)console.warn('markDone: columna "'+DONE_FIELD+'" no encontrada en encabezados. Usando columna A como fallback.');
+  await sUpdate(xSid(cfg.responsesUrl),`${cfg.responsesSheet||'Creacion_Codigo'}!${col}${rowIdx}`,[['TRUE']]);
 }
 
 async function sendMail(emails,code,name,school){
