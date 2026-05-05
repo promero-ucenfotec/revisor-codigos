@@ -835,6 +835,7 @@ async function doApprove(){
     lastCodes[esc]=code;
     session.approved++;
     toast('✓ Aprobado: '+code,'ok');
+    setBtns(false,approveLabel);
     nextReview();
 
   }catch(e){
@@ -1005,12 +1006,27 @@ async function markDone(rowIdx){
 }
 
 async function sendMail(emails,code,name,school){
-  // emails puede ser string (legacy) o array
   const recipients=Array.isArray(emails)?emails:[emails];
   const subj=`[DCD] Curso añadido a Plantilla Maestra: ${code}`;
   const body=`Estimado equipo de ${school},\n\nSe ha aprobado e incorporado el siguiente curso:\n\n  Código: ${code}\n  Nombre: ${name}\n  Fecha: ${new Date().toLocaleDateString('es-CR')}\n\nSaludos,\nDirección de Desarrollo Curricular y Docente\nUniversidad CENFOTEC`;
+
+  // Asunto con encoding RFC 2047 para soportar tildes y ñ
+  const subjB64=btoa(unescape(encodeURIComponent(subj)));
+  const subjEncoded=`=?UTF-8?B?${subjB64}?=`;
+
+  // Cuerpo en base64 para garantizar UTF-8 completo
+  const bodyB64=btoa(unescape(encodeURIComponent(body)));
+
   for(const to of recipients){
-    const msg=[`To: ${to}`,`Subject: ${subj}`,`Content-Type: text/plain; charset=utf-8`,``,body].join('\n');
+    const msg=[
+      `To: ${to}`,
+      `Subject: ${subjEncoded}`,
+      `MIME-Version: 1.0`,
+      `Content-Type: text/plain; charset=UTF-8`,
+      `Content-Transfer-Encoding: base64`,
+      ``,
+      bodyB64
+    ].join('\r\n');
     const enc=btoa(unescape(encodeURIComponent(msg))).replace(/\+/g,'-').replace(/\//g,'_');
     await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send',{
       method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
