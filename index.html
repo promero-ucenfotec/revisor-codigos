@@ -800,32 +800,47 @@ async function doApprove(){
   const code=(codeEl&&codeEl.value.trim())||currentProposedCode;
   if(!code){toast('Ingresá un código','warn');return;}
 
+  const approveLabel='<svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M2 8l4 4 8-8" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg> Aprobar';
   const btns=[document.getElementById('fl-approve'),document.getElementById('fu-approve')];
-  btns.forEach(b=>{if(b){b.disabled=true;b.innerHTML='<div class="spin"></div> Procesando...';}});
+  const setBtns=(disabled,html)=>btns.forEach(b=>{if(b){b.disabled=disabled;b.innerHTML=html;}});
+
+  setBtns(true,'<div class="spin"></div> Procesando...');
 
   try{
-    // Guardar ediciones
+    // 1. Guardar ediciones en Sheets de respuestas
     const rowEdits=edits[reviewIdx]||{};
     if(Object.keys(rowEdits).length>0){
       await saveEdits(currentRowData,rowEdits);
       session.edited++;
     }
-    // Escribir en Plantilla Maestra con append
+
+    // 2. Escribir en Plantilla Maestra
     await writeToMaestra(currentRowData,code);
-    // Marcar TRUE
+
+    // 3. Marcar como TRUE en respuestas
     await markDone(currentRowData.__row);
-    // Correo
+
+    // 4. Correo — no-crítico: si falla se avisa pero no bloquea
     const esc=currentRowData['¿A cuál escuela pertenece?']||'';
-    const email=cfg.schoolEmails&&cfg.schoolEmails[esc];
-    if(email)await sendMail(email,code,currentRowData['Ingrese el nombre del curso:']||'',esc);
+    const emailVal=cfg.schoolEmails&&cfg.schoolEmails[esc];
+    if(emailVal){
+      try{
+        await sendMail(emailVal,code,currentRowData['Ingrese el nombre del curso:']||'',esc);
+      }catch(emailErr){
+        toast('Aprobado, pero el correo falló: '+emailErr.message,'warn');
+        console.warn('Email error:',emailErr);
+      }
+    }
 
     lastCodes[esc]=code;
     session.approved++;
     toast('✓ Aprobado: '+code,'ok');
     nextReview();
+
   }catch(e){
-    toast('Error: '+e.message,'err');console.error(e);
-    btns.forEach(b=>{if(b){b.disabled=false;b.innerHTML='<svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M2 8l4 4 8-8" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg> Aprobar';}});
+    toast('Error: '+e.message,'err');
+    console.error(e);
+    setBtns(false,approveLabel);
   }
 }
 
