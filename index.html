@@ -530,9 +530,12 @@ async function loadPending(){
 
 async function loadLastCodes(){
   const sid=xSid(cfg.maestraUrl), sn=cfg.maestraSheet||'1.Cursos';
+  // Leer encabezados completos (fila 1 de todas las columnas)
+  const hdrs=await sGet(sid,sn+'!1:1');
+  maestraHdrs=(hdrs.values||[[]])[0]||[];
+  // Leer solo A:B para los últimos códigos por escuela
   const d=await sGet(sid,sn+'!A:B');
   const rows=(d.values||[]).slice(1);
-  maestraHdrs=(d.values||[])[0]||[];
   lastCodes={};
   rows.forEach(r=>{const e=(r[0]||'').trim(),c=(r[1]||'').trim();if(e&&c)lastCodes[e]=c;});
 }
