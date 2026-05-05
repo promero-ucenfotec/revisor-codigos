@@ -98,27 +98,22 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .mode-btn:hover:not(.active){background:var(--faint);color:var(--text);}
 
 /* ── FLASHCARD ── */
-#mode-flash{}
-.flash-course-header{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:18px 22px;margin-bottom:16px;box-shadow:var(--shadow);display:flex;align-items:center;gap:14px;}
-.flash-school-chip{flex-shrink:0;}
-.flash-course-name{font-size:16px;font-weight:600;color:var(--navy);line-height:1.3;flex:1;}
+.flash-course-header{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:16px 20px;margin-bottom:14px;box-shadow:var(--shadow);display:flex;align-items:center;gap:14px;}
+.flash-course-name{font-size:15px;font-weight:600;color:var(--navy);line-height:1.3;flex:1;}
 .flash-code-box{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 12px;text-align:center;flex-shrink:0;}
 .flash-code-lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;}
 .flash-code-input{font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:700;color:var(--navy);background:transparent;border:none;outline:none;width:110px;text-align:center;margin-top:3px;}
 .flash-code-input:focus{border-bottom:1.5px solid var(--blue);}
 
-/* La tarjeta flip */
-.flash-scene{perspective:1000px;width:100%;min-height:260px;margin-bottom:14px;}
-.flash-card-inner{width:100%;min-height:260px;position:relative;transform-style:preserve-3d;transition:transform .5s cubic-bezier(.4,0,.2,1);}
-.flash-card-inner.flipped{transform:rotateY(180deg);}
-.flash-face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;background:var(--white);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);display:flex;flex-direction:column;padding:28px 28px 20px;}
-.flash-back{transform:rotateY(180deg);}
+/* Tarjeta simple sin flip */
+.flash-card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:26px 26px 20px;min-height:220px;display:flex;flex-direction:column;margin-bottom:14px;transition:border-color .2s;}
+.flash-card:focus-within{border-color:var(--blue);}
 .flash-field-label{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--blue);margin-bottom:10px;}
-.flash-field-value{font-size:15px;color:var(--text);line-height:1.6;flex:1;overflow-y:auto;white-space:pre-wrap;word-break:break-word;}
-.flash-field-value[contenteditable="true"]:focus{outline:none;border-bottom:1.5px solid var(--blue);}
 .flash-edited-dot{display:inline-block;width:7px;height:7px;background:var(--amber);border-radius:50%;margin-left:6px;vertical-align:middle;}
-.flash-field-num{font-size:11px;color:var(--muted);margin-top:10px;text-align:right;font-family:'JetBrains Mono',monospace;}
-.flash-hint{font-size:11.5px;color:var(--muted);text-align:center;margin-top:6px;}
+.flash-field-value{font-size:15px;color:var(--text);line-height:1.6;flex:1;overflow-y:auto;white-space:pre-wrap;word-break:break-word;outline:none;border-bottom:1.5px solid transparent;transition:border-color .15s;}
+.flash-field-value:focus{border-bottom-color:var(--blue);}
+.flash-field-value.empty{color:var(--muted);font-style:italic;font-size:13.5px;}
+.flash-field-meta{font-size:11px;color:var(--muted);margin-top:10px;display:flex;align-items:center;justify-content:space-between;font-family:'JetBrains Mono',monospace;}
 
 /* Nav flashcard */
 .flash-nav{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:16px;}
@@ -126,8 +121,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .flash-nav-btn:hover{background:var(--navy);color:#fff;border-color:var(--navy);}
 .flash-nav-btn:disabled{opacity:.3;cursor:not-allowed;}
 .flash-field-counter{font-size:13px;font-weight:600;color:var(--navy);font-family:'JetBrains Mono',monospace;min-width:60px;text-align:center;}
-.flash-flip-hint{font-size:12px;color:var(--muted);text-align:center;margin-bottom:16px;cursor:pointer;}
-.flash-flip-hint:hover{color:var(--navy);}
 
 /* Flash actions */
 .flash-actions{display:flex;gap:10px;flex-wrap:wrap;}
@@ -302,20 +295,14 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
     <!-- FLASHCARD MODE -->
     <div id="mode-flash">
       <div class="flash-course-header" id="flash-header"></div>
-      <div class="flash-scene" onclick="flipCard()">
-        <div class="flash-card-inner" id="flash-inner">
-          <div class="flash-face flash-front" id="flash-front">
-            <div class="flash-field-label" id="ff-label"></div>
-            <div class="flash-field-value" id="ff-value" contenteditable="true"></div>
-            <div class="flash-field-num" id="ff-num"></div>
-          </div>
-          <div class="flash-face flash-back" id="flash-back">
-            <div class="flash-field-label" style="color:var(--muted);">Anverso</div>
-            <div class="flash-field-value" style="font-size:13px;color:var(--muted);font-style:italic;">Haz clic para ver el campo</div>
-          </div>
+      <div class="flash-card" id="flash-card">
+        <div class="flash-field-label" id="ff-label"></div>
+        <div class="flash-field-value" id="ff-value" contenteditable="true" spellcheck="false"></div>
+        <div class="flash-field-meta">
+          <span id="ff-copyBtn" style="cursor:pointer;color:var(--blue);font-size:11px;" onclick="copyFlashField()">Copiar campo</span>
+          <span id="ff-num"></span>
         </div>
       </div>
-      <div class="flash-hint">Clic en la tarjeta para voltear · Edita directamente el texto</div>
       <div class="flash-nav">
         <button class="flash-nav-btn" id="fn-prev" onclick="flashPrev()">
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -335,10 +322,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
           <svg width="11" height="11" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="#d97706" stroke-width="1.3"/><path d="M8 5v4M8 11v.5" stroke="#d97706" stroke-width="1.3" stroke-linecap="round"/></svg>
           Editado
         </span>
-        <button class="btn btn-ghost btn-sm" style="margin-left:auto;" onclick="copyAllFlash()">
-          <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><rect x="5" y="5" width="8" height="9" rx="1.5" stroke="currentColor" stroke-width="1.2"/><path d="M3 11V3a1 1 0 011-1h7" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
-          Copiar todo
-        </button>
+        <button class="btn btn-ghost btn-sm" style="margin-left:auto;" onclick="copyAllFlash()">Copiar todo</button>
       </div>
     </div>
 
@@ -647,14 +631,13 @@ function renderFlash(){
   const nombre=row['Ingrese el nombre del curso:']||'Sin nombre';
 
   document.getElementById('flash-header').innerHTML=`
-    <span class="school-chip sc-${pfx} flash-school-chip">${pfx}</span>
+    <span class="school-chip sc-${pfx}" style="flex-shrink:0;">${pfx}</span>
     <div class="flash-course-name">${nombre}</div>
     <div class="flash-code-box">
       <div class="flash-code-lbl">Código propuesto</div>
       <input class="flash-code-input" id="flash-code" value="${currentProposedCode}" onclick="event.stopPropagation()">
     </div>
   `;
-
   renderFlashField();
   updateFlashEdited();
 }
@@ -663,48 +646,64 @@ function renderFlashField(){
   const fields=getFlashFields();
   const field=fields[flashIdx];
   const row=currentRowData;
-  const val=edits[reviewIdx]&&edits[reviewIdx][field]?edits[reviewIdx][field].newVal:(row[field]||'');
+  const edited=edits[reviewIdx]&&edits[reviewIdx][field];
+  const val=edited?edited.newVal:(row[field]||'');
 
-  // Reset flip
-  flashFlipped=false;
-  document.getElementById('flash-inner').classList.remove('flipped');
+  const hasEdit=!!(edits[reviewIdx]&&edits[reviewIdx][field]);
+  document.getElementById('ff-label').innerHTML=
+    field+(hasEdit?'<span class="flash-edited-dot"></span>':'');
 
-  document.getElementById('ff-label').innerHTML=field+(edits[reviewIdx]&&edits[reviewIdx][field]?'<span class="flash-edited-dot"></span>':'');
   const valEl=document.getElementById('ff-value');
-  valEl.textContent=val||'Sin información';
   valEl.dataset.field=field;
   valEl.dataset.original=row[field]||'';
-  valEl.style.fontStyle=val?'normal':'italic';
-  valEl.style.color=val?'var(--text)':'var(--muted)';
 
-  document.getElementById('ff-num').textContent=`${flashIdx+1} de ${fields.length}`;
+  if(!val){
+    valEl.textContent='Sin información';
+    valEl.classList.add('empty');
+  }else{
+    valEl.textContent=val;
+    valEl.classList.remove('empty');
+  }
+
+  document.getElementById('ff-num').textContent=`${flashIdx+1} / ${fields.length}`;
   document.getElementById('fn-counter').textContent=`${flashIdx+1} / ${fields.length}`;
   document.getElementById('fn-prev').disabled=flashIdx===0;
   document.getElementById('fn-next').disabled=flashIdx===fields.length-1;
 
-  // Input listener
-  valEl.oninput=()=>{
-    const nv=valEl.textContent.trim();
+  // Limpiar y re-asignar listener de edición
+  const newValEl=valEl.cloneNode(true);
+  valEl.parentNode.replaceChild(newValEl,valEl);
+  newValEl.addEventListener('focus',()=>{
+    if(newValEl.classList.contains('empty')){newValEl.textContent='';newValEl.classList.remove('empty');}
+  });
+  newValEl.addEventListener('input',()=>{
+    const nv=newValEl.textContent.trim();
     const orig=row[field]||'';
-    if(nv!==orig&&nv!=='Sin información'){
+    if(nv&&nv!==orig){
+      if(!edits[reviewIdx])edits[reviewIdx]={};
       edits[reviewIdx][field]={newVal:nv,orig};
-      updateFlashEdited();
     }else{
-      delete edits[reviewIdx][field];
-      updateFlashEdited();
+      if(edits[reviewIdx])delete edits[reviewIdx][field];
     }
-  };
+    const he=!!(edits[reviewIdx]&&edits[reviewIdx][field]);
+    document.getElementById('ff-label').innerHTML=field+(he?'<span class="flash-edited-dot"></span>':'');
+    updateFlashEdited();
+  });
+}
+
+function copyFlashField(){
+  const valEl=document.getElementById('ff-value');
+  if(!valEl)return;
+  navigator.clipboard.writeText(valEl.textContent).then(()=>{
+    const btn=document.getElementById('ff-copyBtn');
+    if(btn){btn.textContent='✓ Copiado';setTimeout(()=>{btn.textContent='Copiar campo';},1400);}
+  });
 }
 
 function updateFlashEdited(){
   const hasEdits=Object.keys(edits[reviewIdx]||{}).length>0;
   document.getElementById('fl-edited').classList.toggle('show',hasEdits);
   document.getElementById('fu-edited').classList.toggle('show',hasEdits);
-}
-
-function flipCard(){
-  flashFlipped=!flashFlipped;
-  document.getElementById('flash-inner').classList.toggle('flipped',flashFlipped);
 }
 function flashPrev(){if(flashIdx>0){flashIdx--;renderFlashField();}}
 function flashNext(){const fl=getFlashFields();if(flashIdx<fl.length-1){flashIdx++;renderFlashField();}}
@@ -897,54 +896,97 @@ async function writeToMaestra(row,code){
 }
 
 async function insertRowInPlace(sid,sn,newRow,escuela,newCode){
-  // Leer todas las filas existentes
-  const colEnd=col2l(maestraHdrs.length||50);
-  const d=await sGet(sid,`${sn}!A:${colEnd}`);
+  // Leer solo columnas A y B para encontrar la posición
+  const d=await sGet(sid,sn+'!A:B');
   const allRows=d.values||[];
-  if(allRows.length===0){
-    // Hoja vacía — simplemente append
+
+  if(allRows.length<=1){
+    // Hoja vacía o solo encabezado — append directo
     await sAppend(sid,sn,[newRow]);
     return;
   }
 
-  const header=allRows[0];
-  const dataRows=allRows.slice(1);
+  const dataRows=allRows.slice(1); // sin encabezado
 
-  // Encontrar posición de inserción dentro de dataRows
-  let insertAt=dataRows.length; // default: al final
-  let inSchool=false;
+  // Encontrar la última fila del bloque de esta escuela
+  let lastSchoolRow=-1; // índice en dataRows
+  let foundSchool=false;
   for(let i=0;i<dataRows.length;i++){
     const re=(dataRows[i][0]||'').trim();
-    const rc=(dataRows[i][1]||'').trim();
-    if(re===escuela){
-      inSchool=true;
-      if(codeN(rc)>codeN(newCode)){insertAt=i;break;}
-      insertAt=i+1;
-    }else if(inSchool){
-      // Salimos del bloque de esta escuela
-      break;
-    }
+    if(re===escuela){foundSchool=true;lastSchoolRow=i;}
+    else if(foundSchool)break; // salimos del bloque
   }
 
-  // Insertar en memoria
-  dataRows.splice(insertAt,0,newRow);
+  if(!foundSchool){
+    // Escuela no existe aún — append al final
+    await sAppend(sid,sn,[newRow]);
+    return;
+  }
 
-  // Reescribir desde la fila de inserción hasta el final
-  // (solo el rango afectado para no tocar fórmulas de otras partes)
-  const startSheetRow=insertAt+2; // +1 header +1 para 1-index
-  const rowsToWrite=dataRows.slice(insertAt);
+  // Insertar después de lastSchoolRow (que es índice en dataRows)
+  // La fila en Sheets es lastSchoolRow + 2 (1 por encabezado, 1 por 1-index)
+  // Usamos el range de esa fila+1 para que append inserte ANTES de la siguiente fila
+  // Pero la API de append no permite insertar en posición específica.
+  // Usamos batchUpdate appendCells que sí permite rango específico... 
+  // La solución más segura: leer todo, construir en memoria, reescribir solo las filas afectadas.
 
-  // Normalizar largo de filas al ancho del header
-  const width=Math.max(header.length,newRow.length);
-  const normalized=rowsToWrite.map(r=>{
-    const copy=[...r];
-    while(copy.length<width)copy.push('');
-    return copy;
-  });
+  const fullD=await sGet(sid,sn+'!A:ZZ');
+  const fullRows=fullD.values||[];
+  const fullData=fullRows.slice(1);
 
+  // Insertar en posición correcta dentro del bloque
+  let insertAt=lastSchoolRow+1; // después del último de la escuela
+  // Refinar: si hay filas con código mayor, insertar antes
+  for(let i=0;i<fullData.length;i++){
+    const re=(fullData[i][0]||'').trim();
+    const rc=(fullData[i][1]||'').trim();
+    if(re===escuela&&codeN(rc)>codeN(newCode)){insertAt=i;break;}
+  }
+
+  fullData.splice(insertAt,0,newRow);
+
+  // Reescribir desde la fila de inserción hasta el final del bloque de esta escuela
+  // Para no tocar otras filas, calculamos cuántas filas del bloque quedan
+  let blockEnd=insertAt;
+  for(let i=insertAt;i<fullData.length;i++){
+    const re=(fullData[i][0]||'').trim();
+    if(re===escuela||i===insertAt)blockEnd=i;
+    else if(i>insertAt)break;
+  }
+
+  const rowsToWrite=fullData.slice(insertAt,blockEnd+1);
+  const startSheetRow=insertAt+2; // +1 encabezado +1 para 1-index
+  const width=Math.max(...rowsToWrite.map(r=>r.length),newRow.length,fullRows[0]?fullRows[0].length:1);
+  const normalized=rowsToWrite.map(r=>{const c=[...r];while(c.length<width)c.push('');return c;});
   const endCol=col2l(width);
-  const endRow=startSheetRow+normalized.length-1;
-  await sUpdate(sid,`${sn}!A${startSheetRow}:${endCol}${endRow}`,normalized);
+  const endSheetRow=startSheetRow+normalized.length-1;
+
+  // Primero insertar una fila vacía en Sheets para hacer espacio
+  const metaR=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sid}?fields=sheets.properties`,
+    {headers:{Authorization:'Bearer '+token}});
+  const mj=await metaR.json();
+  const sh=(mj.sheets||[]).find(s=>s.properties.title===sn);
+  if(!sh)throw new Error('Hoja no encontrada: '+sn);
+  const sheetId=sh.properties.sheetId;
+  const si=insertAt+1; // 0-index para la API (+1 por encabezado)
+
+  const ir=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sid}:batchUpdate`,{
+    method:'POST',
+    headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
+    body:JSON.stringify({requests:[{insertDimension:{
+      range:{sheetId,dimension:'ROWS',startIndex:si,endIndex:si+1},
+      inheritFromBefore:false
+    }}]})
+  });
+  if(!ir.ok){
+    const errText=await ir.text();
+    throw new Error('Insert row '+ir.status+': '+errText);
+  }
+
+  // Escribir solo la fila nueva
+  const cl=col2l(newRow.length);
+  const targetRow=si+1; // 1-indexed para la API de values
+  await sUpdate(sid,`${sn}!A${targetRow}:${cl}${targetRow}`,[newRow]);
 }
 
 async function sAppend(sid,sn,rows){
